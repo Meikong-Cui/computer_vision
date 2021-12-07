@@ -6,7 +6,7 @@
 #include "opencv2/imgproc/imgproc.hpp"
 #include <iostream>
 #include <math.h>
-#define pi 3.14159265
+#define Pi 3.14159265
 
 using namespace std;
 using namespace cv;
@@ -15,11 +15,10 @@ int ***malloc3dArray(int dim1, int dim2, int dim3);
 int **malloc2dArray(int dim1, int dim2);
 void detectAndDisplay( Mat frame );
 void sobelXY(Mat &input, int size, Mat &outputX, Mat &outputY);
-Mat normalize_and_save(Mat input, string name);
-void threshold(Mat &input, int t, string ver);
+void threshold(Mat &input, int t);
 void houghcircleTrans(int threshold, Mat &magnitude, Mat &direction, vector<Vec3f> &circles);
-void houghlineTrans(Mat &input, Mat &direction);
-void cutImage(Mat &input, Mat &output, Rect area);
+void houghlineTrans(Mat &input, Mat &direction, Mat &lines);
+int calculateTP(vector<Rect> &faces, Rect groundTruth);
 
 // static int H[1000 + 2 * 200][1000 + 2 * 200][200] = {};
 // static int H2[1000 + 2 * 200][1000 + 2 * 200] = {};
@@ -71,16 +70,32 @@ void detectAndDisplay( Mat frame )
     // normalize(magnitude, magnitude, 0, 255, NORM_MINMAX, CV_32F);
 
     normalize(magnitude, magnitude, 0, 255, NORM_MINMAX, CV_8UC1);
-    threshold(magnitude, 70, "source");
+    threshold(magnitude, 70);
+    imwrite("threshold_mag.jpg", magnitude);
 
-    houghlineTrans(magnitude, direction);
+    Mat thre_line;
+    houghlineTrans(magnitude, direction, thre_line);
     houghcircleTrans(70, magnitude, direction, circles);
 
     cascade.detectMultiScale( frame_gray, faces, 1.1, 1, 0|CV_HAAR_SCALE_IMAGE, Size(10, 10), Size(300,300) );
     
-    for( int i = 0; i < faces.size(); i++ ) {
-		rectangle(frame, Point(faces[i].x, faces[i].y), Point(faces[i].x + faces[i].width, faces[i].y + faces[i].height), Scalar( 0, 255, 0 ), 2);
+    // filter by circle
+    vector<Rect> no_entry;
+    for(size_t i = 0; i < faces.size(); i++) {
+        Rect face = faces[i];
+        for(size_t j = 0; j < circles.size(); j++) {
+            Point center(cvRound(circles[j][0]), cvRound(circles[j][1]));
+            if(center.x > face.x && center.x < face.x+face.width && center.y > face.y && center.y < face.y+face.height) {
+                no_entry.push_back(face);
+                continue;
+            }
+        }
+		rectangle(frame, Point(faces[i].x, faces[i].y), Point(faces[i].x + faces[i].width, faces[i].y + faces[i].height), Scalar( 0, 0, 255 ), 2);
 	}
+
+    for(size_t i = 0; i < no_entry.size(); i++) {
+        rectangle(frame, Point(no_entry[i].x, no_entry[i].y), Point(no_entry[i].x + no_entry[i].width, no_entry[i].y + no_entry[i].height), Scalar( 0, 255, 0 ), 2);
+    }
 
     for (size_t i = 0; i < circles.size(); i++) {
         Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
@@ -130,16 +145,7 @@ int **malloc2dArray(int dim1, int dim2) {
     return array;
 }
 
-Mat normalize_and_save(Mat input, string name) {
-	Mat n_input(input.size(), CV_8UC1, Scalar(0));
-	normalize(input, n_input, 0, 255, NORM_MINMAX, CV_8UC1);
-
-	imwrite(name+".jpg", n_input);
-
-	return n_input;
-}
-
-void threshold(Mat &input, int t, string ver) {
+void threshold(Mat &input, int t) {
 	for(int i = 0; i < input.rows; i++) {
 		for(int j = 0; j < input.cols; j++) {
 			int val = (int) input.at<uchar>(i, j);
@@ -150,7 +156,6 @@ void threshold(Mat &input, int t, string ver) {
 			}
 		}
 	}
-	imwrite("threshold_"+ver+".jpg", input);
 }
 
 void houghcircleTrans(int threshold, Mat &magnitude, Mat &direction, vector<Vec3f> &circles) {
@@ -210,26 +215,41 @@ void houghcircleTrans(int threshold, Mat &magnitude, Mat &direction, vector<Vec3
 
     imwrite("houghCircle_space.jpg", hough_sum);
 
+    // for (int r = r_min; r < r_max; r++) {
+    //     for(int x = 0; x < width; x++) {
+    //         for(int y = 0; y < height; y++) {
+    //             if(H[x][y][r] > 15) {
+    //                 Vec3f circle(y, x, r);
+    //                 if(circles.size() == 0) circles.push_back(circle);
+    //                 else {
+    //                     for(size_t i = 0; i < circles.size(); i++) {
+    //                         if(circle[0] < circles[i][0]-6 && circle[0] > circles[i][0]+6 && circle[1] < circles[i][1]-6 && circle[1] > circles[i][1]+6) {
+    //                             circles.push_back(circle);
+    //                         }
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
+    
+
 	for (int x = 0; x < width; x++) {
         for (int y = 0; y < height; y++) {
-			bool flag = true;
 			map<int, int> hashMap;
             for (int r = r_min; r < r_max; r++) {
-				if(H[x][y][r] > 15) {
-					hashMap[r] = H[x][y][r];
-				}
+				if(H[x][y][r] > 15) hashMap[r] = H[x][y][r];
             }
+            bool flag = true;
 			for(map<int, int>::const_iterator iterator = hashMap.begin(); iterator != hashMap.end(); iterator++) {
 				for(int i = 0; i < circles.size(); i++) {
 					Vec3f circle = circles[i];
 					int r = circle[2];
-					if(iterator->first > r-6 && iterator->first < r+6){
-						flag = false;
-					}
+					if(iterator->first > r-6 && iterator->first < r+6) flag = false;
 				}
 				if(flag == true) {
 					Vec3f circle(y, x, iterator->first);
-					std::cout << "radius: " << iterator->first << ' ' << x << ' ' << y << endl;
+					// std::cout << x << ' ' << y << << ' ' << "radius: " << iterator->first << endl;
 					circles.push_back(circle);
 				}
 			}
@@ -237,11 +257,11 @@ void houghcircleTrans(int threshold, Mat &magnitude, Mat &direction, vector<Vec3
     }
 }
 
-void houghlineTrans(Mat &input, Mat &direction) {
-	int diag = sqrt(pow(input.rows,2)+pow(input.cols,2));
+void houghlineTrans(Mat &input, Mat &direction, Mat &lines) {
+	int diagnol = sqrt(pow(input.rows,2)+pow(input.cols,2));
 
-	int **hough_space = malloc2dArray(diag,360);
-    for (int i = 0; i < diag; i++) {
+	int **hough_space = malloc2dArray(diagnol,360);
+    for (int i = 0; i < diagnol; i++) {
         for (int j = 0; j < 360; j++) {
             hough_space[i][j] = 0;
         }
@@ -249,50 +269,64 @@ void houghlineTrans(Mat &input, Mat &direction) {
     for (int x = 0; x < input.rows; x++) {
         for (int y = 0; y < input.cols; y++) {
 			if(input.at<uchar>(x,y) == 255) {
-				int th = int(direction.at<float>(x,y)*(180/pi)) + 180;
+				int th = int(direction.at<float>(x,y)*(180/Pi)) + 180;
 				for(int t = th-5; t <= th+5; t++) {
-					int mod_th = (t+360) % 360;
-					float t_rad = (mod_th-180)*(pi/180);
-					int xc = int(x * sin(t_rad));
-					int yc = int(y * cos(t_rad));
-					int p = xc + yc;
-					if(p >= 0 && p <= diag) {
-						hough_space[p][mod_th] += 1;
+					int theta = (t+360) % 360;
+					float radience = (theta-180)*(Pi/180);
+					int xc = int(x * sin(radience));
+					int yc = int(y * cos(radience));
+					int r = xc + yc;
+					if(r >= 0 && r <= diagnol) {
+						hough_space[r][theta] += 1;
 					}
 				}
 			}
         }
     }
 
-	Mat hough_output(diag, 360, CV_32FC1, Scalar(0));
- 
-    for (int p = 0; p < diag; p++) {
+	Mat rtheta(diagnol, 360, CV_32FC1, Scalar(0));
+    
+    float max_v = 0.0f;
+    for (int r = 0; r < diagnol; r++) {
         for (int t = 0; t < 360; t++) {
-			hough_output.at<float>(p,t) = hough_space[p][t];
+			rtheta.at<float>(r,t) = hough_space[r][t];
+            if(hough_space[r][t] > max_v) max_v = hough_space[r][t];
         }
     }
+    // Mat img_threshold = rtheta.clone();
+    // for (int r = 0; r < diagnol; r++) {
+    //     for (int t = 0; t < 360; t++) {
+    //         if(img_threshold.at<float>(r, t) / max_v < 0.9) img_threshold.at<float>(r, t) = 0;
+    //     }
+    // }
 
-	Mat img_threshold = normalize_and_save(hough_output, "rho_theta_space");
-	threshold(img_threshold, 10, "rho_theta");
+	Mat img_threshold;
+    normalize(rtheta, img_threshold, 0, 255, NORM_MINMAX, CV_8UC1);
+	threshold(img_threshold, 10);
 
-	Mat hough_output_o(input.rows, input.cols, CV_32FC1, Scalar(0));
+	Mat houghLineSpace(input.rows, input.cols, CV_32FC1, Scalar(0));
  
-	for(int p = 0; p < hough_output.rows; p++) {
-		for(int th = 0; th < hough_output.cols; th++) {
-			if(img_threshold.at<uchar>(p,th) == 255) {
-				float t_rad = (th-180) * (pi/180);
+	for(int r = 0; r < rtheta.rows; r++) {
+		for(int th = 0; th < rtheta.cols; th++) {
+			if(img_threshold.at<uchar>(r,th) == 255) {
+				float radience = (th-180) * (Pi/180);
 				for(int x = 0; x < input.cols; x++) {
-					int y = ((-cos(t_rad))/sin(t_rad))*x + (p/sin(t_rad));
+					int y = ((-cos(radience))/sin(radience))*x + (r/sin(radience));
 
 					if(y >= 0 && y < input.rows) {
-						hough_output_o.at<float>(y,x)++;
+						houghLineSpace.at<float>(y,x)++;
 					}
 				}
 			}
 		}
 	}
-	Mat img_threshold_o = normalize_and_save(hough_output_o, "hough_space_lines");
-	threshold(img_threshold_o, 100, "lines");
+
+	Mat threLines;
+    normalize(houghLineSpace, threLines, 0, 255, NORM_MINMAX, CV_8UC1);
+    imwrite("hough_lines_space.jpg", houghLineSpace);
+	threshold(threLines, 100);
+    lines = threLines;
+    imwrite("threshold_lines.jpg", threLines);
 }
 
 void sobelXY(cv::Mat &input, int size, cv::Mat &outputX, cv::Mat &outputY) {
@@ -347,3 +381,28 @@ void sobelXY(cv::Mat &input, int size, cv::Mat &outputX, cv::Mat &outputY) {
 		}
 	}
 }
+
+int calculateTP(vector<Rect> &faces, Rect groundTruth) {
+	int TPcount = 0;
+	for(size_t i =0; i < faces.size(); i++) {
+		float startX = (faces[i].x < groundTruth.x) ? faces[i].x : groundTruth.x;
+		float startY = (faces[i].y < groundTruth.y) ? faces[i].y : groundTruth.y;
+		float endX = ((faces[i].x + faces[i].width) > (groundTruth.x + groundTruth.width)) ? (faces[i].x + faces[i].width) : (groundTruth.x + groundTruth.width);
+		float endY = ((faces[i].y + faces[i].height) > (groundTruth.y + groundTruth.height)) ? (faces[i].y + faces[i].height) : (groundTruth.y + groundTruth.height);
+		int x1 = 0, y1 = 0;
+		for(int a = int(startX); a <= int(endX); a++) {
+			if(a>faces[i].x && a>groundTruth.x && a<(faces[i].x + faces[i].width) && a<(groundTruth.x + groundTruth.width)) x1++;
+		}
+		for(int b = int(startY); b <= int(endY); b++) {
+			if(b>faces[i].y && b>groundTruth.y && b<(faces[i].y + faces[i].height) && b<(groundTruth.y + groundTruth.height)) y1++;
+		}
+		float area1 = groundTruth.width * groundTruth.height;
+		float area2 = faces[i].width * faces[i].height;
+		float IOU = x1*y1 / (area1 + area2 - x1*y1);
+		if(IOU > 0.4f) TPcount++;		
+	}
+	// std::cout << "True Positive rate: " << std::min(TPcount/groundTruth_f, 1) * 100 << '%' << std::endl;
+	// std::cout << "F1 score: " << TPcount/(TPcount + 0.5*(faces.size()-TPcount + std::max(0, groundTruth_f - TPcount))) << std::endl;
+	return TPcount;
+}
+// ./opencv_traincascade -data NoEntrycascade -vec no_entry.vec -bg negatives.dat -numPos 500 -numNeg 500 -numStages 3 -maxDepth 1 -w 20 -h 20 -minHitRate 0.999 -maxFalseAlarmRate 0.05 -mode ALL

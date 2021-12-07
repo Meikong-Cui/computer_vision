@@ -42,5 +42,72 @@ Task2:
 14:detected=10, GT=1, TP=0, F1 score=0.0
 15:detected=5 , GT=2, TP=2, F1 score=0.571429
 
+Train:
+PARAMETERS:
+cascadeDirName: NoEntrycascade
+vecFileName: no_entry.vec
+bgFileName: negatives.dat
+numPos: 500
+numNeg: 500
+numStages: 3
+precalcValBufSize[Mb] : 256
+precalcIdxBufSize[Mb] : 256
+stageType: BOOST
+featureType: HAAR
+sampleWidth: 20
+sampleHeight: 20
+boostType: GAB
+minHitRate: 0.999
+maxFalseAlarmRate: 0.05
+weightTrimRate: 0.95
+maxDepth: 1
+maxWeakCount: 100
+mode: ALL
+
+===== TRAINING 0-stage =====
+<BEGIN
+POS count : consumed   500 : 500
+NEG count : acceptanceRatio    500 : 1
+Precalculation time: 6
++----+---------+---------+
+|  N |    HR   |    FA   |
++----+---------+---------+
+|   1|        1|        0|
++----+---------+---------+
+END>
+
+===== TRAINING 1-stage =====
+<BEGIN
+POS count : consumed   500 : 500
+NEG count : acceptanceRatio    500 : 0.0161985
+Precalculation time: 7
++----+---------+---------+
+|  N |    HR   |    FA   |
++----+---------+---------+
+|   1|        1|        1|
++----+---------+---------+
+|   2|        1|    0.046|
++----+---------+---------+
+END>
+
+===== TRAINING 2-stage =====
+<BEGIN
+POS count : consumed   500 : 500
+NEG count : acceptanceRatio    500 : 0.00112043
+Precalculation time: 7
++----+---------+---------+
+|  N |    HR   |    FA   |
++----+---------+---------+
+|   1|        1|        1|
++----+---------+---------+
+|   2|        1|    0.148|
++----+---------+---------+
+|   3|        1|    0.148|
++----+---------+---------+
+|   4|        1|    0.032|
++----+---------+---------+
+END>
+
+
 
 
