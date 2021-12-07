@@ -3,7 +3,7 @@ NoEntry1.bmp 24 TPR: 1 | F1 score: 0.08
 NoEntry2.bmp 29 TPR: 1 | F1 score: 0.0666667
 NoEntry3.bmp 14 TPR: 1 | F1 score: 0.25
 NoEntry4.bmp 39 TPR: 1 | F1 score: 0.097561
-NoEntry5.bmp 33 TPR: 0.25 | F1 score: 0.0540541
+NoEntry5.bmp TPR: 0.25 | F1 score: 0.097561
 NoEntry6.bmp 10 TPR: 0.25 | F1 score: 0.142857
 NoEntry7.bmp 18 TPR: 0 | F1 score: 0
 NoEntry8.bmp 13 TPR: 0.75 | F1 score: 0.352941
@@ -14,3 +14,22 @@ NoEntry12.bmp 22 TPR: 0.5 | F1 score: 0.214286
 NoEntry13.bmp 34 TPR: 0 | F1 score: 0
 NoEntry14.bmp 17 TPR: 0 | F1 score: 0
 NoEntry15.bmp 6 TPR: 1 | F1 score: 0.5
+
+
+task3:
+NoEntry0.bmp TPR: 1 | F1 score: 1
+NoEntry1.bmp TPR: 1 | F1 score: 1
+NoEntry2.bmp TPR: 1 | F1 score: 0.666667
+NoEntry3.bmp TPR: 1 | F1 score: 0.571429
+NoEntry4.bmp TPR: 1 | F1 score: 1
+NoEntry5.bmp TPR: 0 | F1 score: 0
+NoEntry6.bmp TPR: 0.25 | F1 score: 0.4
+NoEntry7.bmp TPR: 0 | F1 score: 0
+NoEntry8.bmp TPR: 0.75 | F1 score: 0.857143
+NoEntry9.bmp TPR: 1 | F1 score: 1
+NoEntry10.bmp TPR: 0.666667 | F1 score: 0.666667
+NoEntry11.bmp TPR: 0.5 | F1 score: 0.5
+NoEntry12.bmp TPR: 0.333333 | F1 score: 0.5
+NoEntry13.bmp 34 TPR: 0 | F1 score: 0
+NoEntry14.bmp 17 TPR: 0 | F1 score: 0
+NoEntry15.bmp TPR: 0.5 | F1 score: 0.666667
