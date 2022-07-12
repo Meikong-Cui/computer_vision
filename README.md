@@ -8,3 +8,6 @@ This is my coursework of Image Processing & Computer Vision. This coursework has
 4. Part 4 is improving the No Entry detector. I write an HSV filter on RGB pictures and a line detector in hough space, which is combined with circle detector to find the No Entry sign.
 
 The results and evaluation is in the 'report.pdf'. The evaluation methods use IOU and F1 score.
+
+This is a screenshot of my detector, green boxes are outputs of Viola-Jones detector, red boxes are the final output of filter + Viola-Jones detector:
+![imagetext](https://github.com/Meikong-Cui/computer_vision/blob/main/No_entry/Noentry.png)
